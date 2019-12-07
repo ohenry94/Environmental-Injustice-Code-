@@ -53,27 +53,6 @@ nrow(income.tracts)
 # Removing NA
 income.tracts <- income.tracts[!is.na(income.tracts$Income),] 
 
-# #Create choropleth map of income
-# med.income <- income.tracts$Income
-# shades <- auto.shading(med.income, n=6, cols = brewer.pal(6, 'Oranges'))
-# #map the data with associated colours
-# choropleth(income.tracts, med.income, shades) 
-# #Adding Legend
-# choro.legend(-123.8, 49.15, shades, cex = .5, title = "Yearly Income") 
-
-map_income <- tm_shape(income.tracts) +
-  tm_polygons(col = "Income",
-              title = "Income",
-              style = "fisher", 
-              palette="Greens",
-              lwd = 0.3) +
-  tm_shape(spSample) + 
-  tm_dots(col="PM25AGG", palette = "-RdBu", title="PM2.5 (in ppm)", size=0.2) +
-  tm_compass(north = 0, type = NA, text.size = 0.8,size = NA, position = "LEFT") +
-  tm_scale_bar(width = 0.15, text.size = 0.5, position = "LEFT") +
-  tm_layout(legend.outside = TRUE)
-map_income
-
 #Select postal codes that fall within dissemination tracts)
 postalcodes <- intersect(postalcodes,income.tracts)
 #See what the data looks like spatially
@@ -108,13 +87,18 @@ fullgrid(grd)    <- TRUE  # Create SpatialGrid object
 proj4string(grd) <- proj4string(spSample)
 
 # # Study Area
-# tm_shape(income.pm25) +
-#   tm_fill() +
-#   tm_borders() +
-#   tm_shape(spSample) + tm_dots(col="PM25AGG", palette = "-RdBu", title="PM2.5 (in ppm)", size=0.4) +
-#   tm_compass(north = 0, type = NA, text.size = 0.8,size = NA,position = "LEFT") +
-#   tm_scale_bar(width = 0.15, text.size = 0.5, position = "LEFT") +
-#   tm_layout(legend.outside = TRUE)
+map_study <- tm_shape(income.tracts) +
+  tm_polygons(col = "Income",
+              title = "Income",
+              style = "fisher", 
+              palette="Greens",
+              lwd = 0.3) +
+  tm_shape(spSample) + 
+  tm_dots(col="PM25AGG", palette = "-RdBu", title="PM2.5 (in ppm)", size=0.2) +
+  tm_compass(north = 0, type = NA, text.size = 0.8,size = NA, position = "LEFT") +
+  tm_scale_bar(width = 0.15, text.size = 0.5, position = "LEFT") +
+  tm_layout(legend.outside = TRUE)
+map_study
 
 
 
@@ -136,9 +120,6 @@ medPM25 <- round(median(pm25.points.aggregate$PM25AGG, na.rm = TRUE), digits=2)
 sdInc <- round(sd(pm25.points.aggregate$Income, na.rm = TRUE), digits=2)
 sdPM25 <- round(sd(pm25.points.aggregate$PM25AGG, na.rm = TRUE), digits=2)
 
-#Skewness
-skewInc <- round(skewness(pm25.points.aggregate$Income, na.rm = TRUE)[1], digits=2)
-skewPm25 <- round(skewness(pm25.points.aggregate$PM25AGG, na.rm = TRUE)[1], digits=2)
 
 #Create a table of descriptive stats
 samples = c("Yearly Income", "PM2.5") # Create an object for the labels
@@ -146,7 +127,6 @@ mean = c(meanInc, meanPM25) #Create an object for the means
 median = c(medInc, medPM25) #Create an object for the medians
 mode = c(modeInc, modePM25) #Create an object for the modes
 standard_deviation = c(sdInc, sdPM25) #Create an object for the standard deviations
-skewness = c(skewInc, skewPm25) #Create an object for the skewness
 
 # Making table
 table = data.frame(samples, mean, median, mode, standard_deviation)
@@ -202,21 +182,7 @@ income.pm25$V.Ii<- lisa.test[,3]
 income.pm25$Z.Ii<- lisa.test[,4]
 income.pm25$P<- lisa.test[,5]
 
-#range(income.pm25$Ii)
-# tmap_mode("view") # Plot, view
-# Mapping LISA
-# map_LISA <- tm_shape(income.pm25) +
-#   tm_polygons(col = "Ii",
-#               title = "Local Moran's I",
-#               style = "fisher",
-#               palette = "viridis", n = 6,
-#               alpha = 0.5) +
-#   tm_compass(north = 0, type = NA, text.size = 0.8,size = NA, position = "LEFT") +
-#   tm_scale_bar(width = 0.15, text.size = 0.5, position = "LEFT") +
-#   tm_layout(legend.outside = TRUE)
-# map_LISA # Neighbourhoods with significant spatial autocorrolation
-
-#range(income.pm25$Z.Ii)
+# Z valeus
 map_LISA_z <- tm_shape(income.pm25) +
   tm_polygons(col = "Z.Ii",
               title = "Local Moran's Z scores",
@@ -234,54 +200,6 @@ moran.plot(income.pm25$Income, income.lw, zero.policy=NULL, spChk=NULL, labels=N
 
 ########## Spatial Interpolation 
 
-# ## Polynomial Trends
-# # Define the 2nd order polynomial equation: DEFINING AS A PERABOLA
-# f.2 <- as.formula(PM25AGG ~ X + Y + I(X*X)+I(Y*Y) + I(X*Y)) 
-# # Add X and Y to P
-# spSample$X <- coordinates(spSample)[,1]
-# spSample$Y <- coordinates(spSample)[,2]
-# # Run the regression model
-# lm.2 <- lm(f.2, data=spSample)
-# # Use the regression model output to interpolate the surface
-# dat.2nd <- SpatialGridDataFrame(grd, data.frame(PM25AGG = predict(lm.2, newdata=grd))) 
-# # Clip the interpolated raster
-# r.2nd   <- raster(dat.2nd)
-# # r.m <- mask(r, income.pm25)
-# # Plot the map
-# tm_shape(r.2nd) + 
-#   tm_raster(n=6, palette="-RdYlBu", title="PM2.5 (in ppm)") +
-#   tm_shape(spSample) + 
-#   tm_dots(size=0.2) +
-#   tm_legend(legend.outside=TRUE) +
-#   tm_compass(north = 0, type = NA, text.size = 0.8,size = NA,position = "LEFT") +
-#   tm_scale_bar(width = 0.2, text.size = 0.5, position = "LEFT")
-# 
-# ### UNIVERSAL KRIGING
-# f.2 <- as.formula(PM25AGG ~ X + Y + I(X*X) + I(Y*Y) + I(X*Y))
-# var.smpl <- variogram(f.2, spSample, cloud = FALSE) 
-# dat.fit  <- fit.variogram(var.smpl, vgm(model="Gau")) 
-# plot(var.smpl, dat.fit)
-# # Using the model
-# #View(dat.fit)
-# dat.krg <- krige(f.2, spSample, grd, dat.fit) 
-# # View(dat.krg@data)
-# # Convert kriged surface to a raster object for clipping
-# r <- raster(dat.krg)
-# r.m <- mask(r, income.pm25)
-# # Plot the map
-# tm_shape(r) + 
-#   tm_raster(n=7, palette="-RdYlBu",title="PM 2.5") +
-#   tm_shape(spSample) + 
-#   tm_dots(size=0.2) +
-#   tm_legend(legend.outside=TRUE) + 
-#   tm_compass(north = 0, type = NA, text.size = 0.8,size = NA,position = "LEFT") +
-#   tm_scale_bar(width = 0.2, text.size = 0.5, position = "LEFT")
-
-
-
-
-######### Spatial Interpolation
-
 # IDW
 proj4string(grd) <- proj4string(spSample)
 P.idw <- gstat::idw(PM25AGG ~ 1, spSample, newdata=grd, idp=4)
@@ -296,9 +214,8 @@ tm_shape(r.m) +
   tm_compass(north = 0, type = NA, text.size = 0.8,size = NA,position = "LEFT") +
   tm_scale_bar(width = 0.2, text.size = 0.5, position = "LEFT")
 
-# tm_compass(north = 0, type = NA, text.size = 0.8,size = NA,position = "LEFT") + tm_scale_bar(width = 0.15, text.size = 0.5, position = "LEFT")
 
-# Leave on out
+# Leave one out
 IDW.out <- vector(length = length(spSample))
 for (i in 1:length(spSample)) {
   IDW.out[i] <- gstat::idw(PM25AGG ~ 1, spSample[-i,], spSample[i,], idp=4)$var1.pred
@@ -354,14 +271,7 @@ pm.income.poly$residuals <- residuals.lm(lm.model)
 #Observe the result to make sure it looks correct
 head(pm.income.poly)
 
-# #Now, create choropleth map of residuals
-# resids <- pm.income.poly$residuals
-# range(resids)
-# shades.res <- shading(breaks=c(-8500,-4500,0,4500,8500), cols = brewer.pal(6, 'PRGn')) #shades <- auto.shading(resids, n=6, cols = brewer.pal(6, 'PuOr'))
-# choropleth(income.tracts, resids, shades.res) 
-# choro.legend(-123.8, 49.2, shades.res, cex = .5, title = "Residuals") 
-
-
+# Residual Map
 map_resids <- tm_shape(pm.income.poly) +
   tm_polygons(col = "residuals",
               title = "Residuals",
@@ -375,7 +285,9 @@ map_resids <- tm_shape(pm.income.poly) +
 map_resids
 
 
-########## Moran's I from assignment 3 ##########
+
+
+########## Moran's I 
 
 # Queens Case
 income.nb_r <- poly2nb(pm.income.poly)
@@ -416,19 +328,7 @@ pm.income.poly$V.Ii_r <- lisa.test_r[,3]
 pm.income.poly$Z.Ii_r <- lisa.test_r[,4]
 pm.income.poly$P_r <- lisa.test_r[,5]
 
-# tmap_mode("view") # Plot, view
-# Mapping LISA
-# map_LISA_r <- tm_shape(pm.income.poly) + 
-#   tm_polygons(col = "Ii_r", 
-#               title = "Local Moran's I", 
-#               style = "fisher", # "fixed", breaks=c(-5, -1, 0, 1, 3, 5, 10), 
-#               palette = "viridis", n = 6, #8   palette="PRGn", n = 8, # 
-#               alpha = 0.5) +
-#   tm_compass(north = 0, type = NA, text.size = 0.8,size = NA, position = "LEFT") +
-#   tm_scale_bar(width = 0.15, text.size = 0.5, position = "LEFT") +
-#   tm_layout(legend.outside = TRUE) 
-# map_LISA_r # Neighbourhoods with significant spatial autocorrolation 
-# range(pm.income.poly$Z.Ii_r)
+# Z values
 map_LISA_r_z <- tm_shape(pm.income.poly) +
   tm_polygons(col = "Z.Ii_r",
               title = "Local Moran's Z scores",
@@ -447,7 +347,7 @@ moran.plot(pm.income.poly$residuals, income.lw_r, zero.policy=NULL, spChk=NULL, 
 
 
 
-####Geographically Weighted Regression #######
+####Geographically Weighted Regression
 
 #Let's say you are continuing with your data from the regression analysis. 
 
@@ -462,11 +362,11 @@ pm.income.poly$Y <- pm.income.poly.coords[,2]
 head(pm.income.poly)
 
 ###Determine the bandwidth for GWR: this will take a while
-# GWRbandwidth <- gwr.sel(pm.income.poly$Income~pm.income.poly$PM25, data=pm.income.poly, coords=cbind(pm.income.poly$X,pm.income.poly$Y),adapt=T) 
+GWRbandwidth <- gwr.sel(pm.income.poly$Income~pm.income.poly$PM25, data=pm.income.poly, coords=cbind(pm.income.poly$X,pm.income.poly$Y),adapt=T) 
 
 ###Perform GWR on the two variables with the bandwidth determined above
 ###This will take a looooooong while
-# gwr.model = gwr(pm.income.poly$Income~pm.income.poly$PM25, data=pm.income.poly, coords=cbind(pm.income.poly$X,pm.income.poly$Y), adapt=GWRbandwidth, hatmatrix=TRUE, se.fit=TRUE) 
+gwr.model = gwr(pm.income.poly$Income~pm.income.poly$PM25, data=pm.income.poly, coords=cbind(pm.income.poly$X,pm.income.poly$Y), adapt=GWRbandwidth, hatmatrix=TRUE, se.fit=TRUE) 
 
 #Print the results of the model
 gwr.model
@@ -478,12 +378,7 @@ head(results)
 #Now for the magic. Let's add our local r-square values to the map
 pm.income.poly$localr <- results$localR2
 
-# #Create choropleth map of r-square values
-# local.r.square <- pm.income.poly$localr
-# shades.r2 <- auto.shading(local.r.square, n=6, cols = brewer.pal(6, 'Oranges'))
-# choropleth(income.tracts, local.r.square, shades.r2) #map the data with associated colours
-# choro.legend(-123.7, 49.19, shades.r2, cex = .5, title = "R-Square Value") #add a legend (you might need to change the location)
-# tmap_mode('plot')
+# Map R2
 map_r2 <-  tm_shape(pm.income.poly) +
   tm_polygons(col = "localr",
               title = "Local R-Square",
@@ -500,12 +395,8 @@ map_r2
 # #Time for more magic. Let's map the coefficients
 # pm.income.poly$coeff <- results$pm.income.poly.PM25
 # range(pm.income.poly$coeff)
-# #Create choropleth map of the coefficients
-# local.coefficient <- pm.income.poly$coeff
-# shades.coef <- shading(breaks=c(-12000,-4000,0,4000,12000), cols = brewer.pal(6, 'PRGn'))# auto.shading(local.coefficient, n=6, cols = brewer.pal(6, 'Oranges'))
-# choropleth(income.tracts, local.coefficient, shades.coef) #map the data with associated colours
-# choro.legend(-123.75, 49.19, shades.coef, cex = .5, title = "Coefficient Value")
 
+# Map Coeff
 map_coeff <- tm_shape(pm.income.poly) +
   tm_polygons(col = "coeff",
               title = "Local Coefficient",
@@ -521,7 +412,7 @@ map_coeff
 
 
 
-########## Point Pattern Analysis from assignment 2######### 
+########## Point Pattern Analysis 
 # spSample.trans <- spTransform(spSample, "+proj=utm +zone=10 ellps=32610") # st_crs(spSample.trans)
 # proj4string(grd) <- proj4string(spSample) CRS arguments:+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0
 
@@ -577,21 +468,20 @@ se.nnd <- 0.26136/((sampleSize*pointDensity)^0.5) # Standard diviation
 z = (nnd-r.nnd)/se.nnd # Z-value
 
 
-### K Function
-k.fun <- Kest(spSample.trans.ppp, correction = "Ripley")
-#use simulation to test the point pattern against CSR
-K_Function <- envelope(spSample.trans.ppp, Kest, nsim = 95, correction = "Ripley")
-plot(K_Function) 
+# ### K Function
+# k.fun <- Kest(spSample.trans.ppp, correction = "Ripley")
+# #use simulation to test the point pattern against CSR
+# K_Function <- envelope(spSample.trans.ppp, Kest, nsim = 95, correction = "Ripley")
+# plot(K_Function) 
 
 
-###KERNEL DENSITY ESTIMATION
-#use cross-validation to get the bandwidth that minimizes MSE
-bw.d <- bw.diggle(spSample.trans.ppp)
-plot(bw.d, ylim=c(-10, 10))
-
-#density using the cross-validation bandwidth
-kde.bwo <- density(spSample.trans.ppp, sigma = bw.d, at = "pixels", eps = c(100, 100))
-kde.bwo.m <- mask(kde.bwo, income.pm25)
-
-plot(kde.bwo)
-# plot(kde.bwo, main = "KDE", "  N = ", nrow(spSample@data), sep = "")
+# ###KERNEL DENSITY ESTIMATION
+# #use cross-validation to get the bandwidth that minimizes MSE
+# bw.d <- bw.diggle(spSample.trans.ppp)
+# plot(bw.d, ylim=c(-10, 10))
+# 
+# #density using the cross-validation bandwidth
+# kde.bwo <- density(spSample.trans.ppp, sigma = bw.d, at = "pixels", eps = c(100, 100))
+# kde.bwo.m <- mask(kde.bwo, income.pm25)
+# 
+# plot(kde.bwo)
